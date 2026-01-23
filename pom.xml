@@ -1,28 +1,489 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="
-           http://maven.apache.org/POM/4.0.0
-           http://maven.apache.org/xsd/maven-4.0.0.xsd">
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<modelVersion>4.0.0</modelVersion>
 
-    <modelVersion>4.0.0</modelVersion>
+<groupId>com.relx.rba.linking</groupId>
+<artifactId>logger</artifactId>
+<version>1.0.4-SNAPSHOT</version>
+<packaging>jar</packaging>
 
-    <groupId>com.example.demo</groupId>
-    <artifactId>demo-service</artifactId>
-    <version>1.2.3-SNAPSHOT</version>
+<name>Linking-Logger-Service</name>
+<description>linking logger service</description>
+<url>https://github.com/risk-dat/linking-consumerheader-logger</url>
+<inceptionYear>2023</inceptionYear>
 
-    <properties>
-        <java.version>17</java.version>
-        <tardis.suffix>2.4.1</tardis.suffix>
-        <ch.suffix>1.8.0</ch.suffix>
-    </properties>
+<properties>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+    <java.version>17</java.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <docker.url>useast.jfrog.lexisnexisrisk.com</docker.url>
+    <docker.repo>uslinking-docker-local</docker.repo>
 
+    <!--
+        Tardis is released as dozens of inter-related modules. If you use more than one of these modules in your
+        project the versions need to be "consistent", but not necessarily identical, as the major version number
+        can vary from one module to another. Thus, we define tardis.suffix here, and reference it down in the
+        dependencies.  It's also used by the workflow that automatically rebuilds your repo in response to a
+        repository_dispatch that arrives whenever Tardis deploys a new snapshot build.
+
+        If you reference a release version of Tardis, the Auto-PR.yml workflow can automatically create a
+        pull request that keeps it up to date whenever new versions of Tardis are released. Please contact
+        TardisHelp@lexisnexisrisk.com and request we send a repository_dispatch to trigger your workflow.
+
+        Similarly, if you reference a snapshot version of Tardis, the Merge-deploy.yml workflow can
+        automatically rebuild when Tardis deploys a new snapshot in response to repository_dispatch.
+    -->
+    <tardis.suffix>26.0-SNAPSHOT</tardis.suffix>
+    <ch.suffix>2.6-SNAPSHOT</ch.suffix>
+    <!--
+        All of RISK should be using JFrog now for package resolution and deployment, but the
+        specific package repos will vary by project. Define them here.
+    -->
+    <jfrog>https://useast.jfrog.lexisnexisrisk.com/artifactory</jfrog>
+    <resolve.snapshot>${jfrog}/uslinking-glb-maven-snapshot-virtual</resolve.snapshot>
+    <resolve.release>${jfrog}/uslinking-glb-maven-virtual</resolve.release>
+    <deploy.snapshot>${jfrog}/uslinking-maven-snapshot-local</deploy.snapshot>
+    <deploy.release>${jfrog}/uslinking-maven-release-local</deploy.release>
+
+    <!--
+         By default we run unit tests, but we can run other forms of tests by triggering
+         one of the following profiles: -PintgTests, -PperfTests, -PallTests
+     -->
+    <test.groups/>
+    <test.exclude.groups>
+        IntegrationTest,
+        ManualUnitTest,
+        SlowUnitTest,
+        PerformanceTest
+    </test.exclude.groups>
+
+    <!-- non-Tardis versions -->
+    <enforcer.version>3.4.1</enforcer.version>
+    <surefire.version>3.2.5</surefire.version>
+    <junit.version>5.14.0</junit.version>
+    <log4j.version>2.25.3</log4j.version>
+    <maven-assembly.version>3.7.1</maven-assembly.version>
+    <netty.version>4.1.110.Final</netty.version>
+    <jackson.version>2.18.3</jackson.version> <!-- THIS HAS TO BE KEPT IN LOCK STEP WITH TARDIS UNTIL THEY CAN FIX ON THEIR SIDE -->
+</properties>
+
+<!-- Package resolution (may be overridden by deploy-* profiles below) -->
+<repositories>
+    <repository>
+        <id>jfrog-maven</id>
+        <url>${resolve.snapshot}</url>
+        <snapshots><enabled>true</enabled></snapshots>
+    </repository>
+</repositories>
+
+<!-- Package deployment (may be overridden by deploy-* profiles below) -->
+<distributionManagement>
+    <repository>
+        <id>jfrog-maven</id>
+        <url>${deploy.release}</url>
+    </repository>
+    <snapshotRepository>
+        <id>jfrog-maven</id>
+        <url>${deploy.snapshot}</url>
+    </snapshotRepository>
+</distributionManagement>
+
+<!--
+    Don't forget to keep your dependencies and plugins up-to-date! For assistance:
+        mvn versions:display-dependency-updates
+        mvn versions:display-plugin-updates
+-->
+
+<!-- Package dependencies -->
+<dependencies>
+    <dependency>
+        <groupId>com.relx.rba.linking</groupId>
+        <artifactId>consumerheader</artifactId>
+        <version>1.${ch.suffix}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.relx.rba.tardis</groupId>
+        <artifactId>runtime</artifactId>
+        <version>1.${tardis.suffix}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.relx.rba.tardis</groupId>
+        <artifactId>hpcc</artifactId>
+        <version>1.${tardis.suffix}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.relx.rba.tardis</groupId>
+        <artifactId>servicebase</artifactId>
+        <version>1.${tardis.suffix}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.relx.rba.tardis</groupId>
+        <artifactId>linking</artifactId>
+        <version>1.${tardis.suffix}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.relx.rba.tardis</groupId>
+        <artifactId>salt</artifactId>
+        <version>4.${tardis.suffix}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.relx.rba.tardis</groupId>
+        <artifactId>ml_dl4j</artifactId>
+        <version>1.${tardis.suffix}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.relx.rba.tardis</groupId>
+        <artifactId>loggersvc</artifactId>
+        <version>1.${tardis.suffix}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.relx.rba</groupId>
+        <artifactId>hpccspecmover</artifactId>
+        <version>1.${tardis.suffix}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.relx.rba.tardis</groupId>
+        <artifactId>nosql</artifactId>
+        <version>1.${tardis.suffix}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.relx.rba.tardis</groupId>
+        <artifactId>lenticmanager</artifactId>
+        <version>1.${tardis.suffix}</version>
+    </dependency>
+
+     <!-- non-Tardis dependencies -->
+    <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter-api</artifactId>
+        <version>${junit.version}</version>
+        <scope>compile</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter-engine</artifactId>
+        <version>${junit.version}</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-api</artifactId>
+        <version>${log4j.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-core</artifactId>
+        <version>${log4j.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-slf4j-impl</artifactId>
+        <version>${log4j.version}</version>
+    </dependency>
+</dependencies>
+
+<dependencyManagement>
     <dependencies>
+        <!--
+            The following block of declarations exists for the sole purpose
+            of eliminating the use of vulnerable transitive dependencies.
+        -->            <!-- tardis-security-bom helps avoid security vulnerabilities - it must appear first in this section -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-            <version>${spring.boot.version}</version>
+            <groupId>com.relx.rba</groupId>
+            <artifactId>tardis-security-bom</artifactId>
+            <version>1.${tardis.suffix}</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+            <version>${jackson.version}</version>
         </dependency>
     </dependencies>
+</dependencyManagement>
 
+<build>
+    <sourceDirectory>src/main/java</sourceDirectory>
+    <directory>target</directory>
+    <resources>
+        <resource>
+            <directory>src/main/resources</directory>
+            <filtering>true</filtering>
+        </resource>
+    </resources>
+
+    <pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>versions-maven-plugin</artifactId>
+                <version>2.16.2</version>
+                <configuration>
+                    <processDependencyManagement>false
+                    </processDependencyManagement><!-- Mute the list of Spring Boot dependencies -->
+                    <rulesUri>file:///${maven.multiModuleProjectDirectory}/releaseVersions.xml</rulesUri>
+                </configuration>
+            </plugin>
+        </plugins>
+    </pluginManagement>
+
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.11.0</version>
+            <configuration>
+                <source>${maven.compiler.source}</source>
+                <target>${maven.compiler.target}</target>
+                <maxmem>512m</maxmem>
+                <meminitial>128m</meminitial>
+                <fork>true</fork>
+            </configuration>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-jar-plugin</artifactId>
+            <version>3.3.0</version>
+            <configuration>
+                <archive>
+                    <index>true</index>
+                    <manifest>
+                        <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                        <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                    </manifest>
+                </archive>
+            </configuration>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>3.3.0</version>
+            <executions>
+                <execution>
+                    <id>attach-sources</id>
+                    <phase>verify</phase>
+                    <goals>
+                        <goal>jar-no-fork</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <version>3.6.0</version>
+            <configuration>
+                <archive>
+                    <manifest>
+                        <mainClass>com.relx.rba.linking.loggerservice.LinkingLoggerApp</mainClass>
+                        <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                        <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                    </manifest>
+                </archive>
+                <descriptorRefs>
+                    <descriptorRef>jar-with-dependencies</descriptorRef>
+                </descriptorRefs>
+                <attach>true</attach>
+            </configuration>
+            <executions>
+                <execution>
+                    <id>make-assembly</id> <!-- this is used for inheritance merges -->
+                    <phase>package</phase> <!--  bind to the packaging phase -->
+                    <goals>
+                        <goal>single</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${surefire.version}</version>
+            <!--
+                See the "intgTests" profile below for an example of how surefire's configuration can conditionally
+                be modified or augmented (e.g. when it's time to run integration tests instead of unit tests)
+            -->
+            <configuration>
+                <argLine>-Dfile.encoding=UTF-8 -Xmx4096m</argLine>
+                <groups>${test.groups}</groups>
+                <excludedGroups>${test.exclude.groups}</excludedGroups>
+            </configuration>
+        </plugin>
+
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-report-plugin</artifactId>
+            <version>${surefire.version}</version>
+            <configuration>
+                <outputDirectory>target/surefire-reports</outputDirectory>
+            </configuration>
+            <executions>
+                <execution>
+                    <phase>test</phase>
+                    <goals>
+                        <goal>report-only</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-deploy-plugin</artifactId>
+            <version>3.1.2</version>
+            <configuration>
+                <retryFailedDeploymentCount>5</retryFailedDeploymentCount>
+                <deployAtEnd>true</deployAtEnd> <!-- useful for multi-module builds -->
+            </configuration>
+        </plugin>
+
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-enforcer-plugin</artifactId>
+            <version>${enforcer.version}</version>
+            <executions>
+                <execution>
+                    <id>enforce-maven</id>
+                    <goals>
+                        <goal>enforce</goal>
+                    </goals>
+                    <configuration>
+                        <rules>
+                            <requireMavenVersion>
+                                <version>3.6.3</version>
+                            </requireMavenVersion>
+                        </rules>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+
+<profiles>
+    <!--
+        By default we run unit tests, but we can run other forms of tests by triggering
+        one of the following profiles: -PintgTests, -PperfTests, -PallTests
+    -->
+    <profile>
+        <id>intgTests</id>
+        <properties>
+            <test.groups>IntegrationTest,SlowUnitTest</test.groups>
+            <test.exclude.groups/>
+        </properties>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${surefire.version}</version>
+                    <configuration>
+                        <!-- Relay integration test credentials (as needed) -->
+                        <systemPropertyVariables>
+                            <hpcc_cluster>${env.HPCC_CLUSTER}</hpcc_cluster>
+                            <hpcc_password>${env.HPCC_PASSWORD}</hpcc_password>
+                            <hpcc_url>${env.HPCC_URL}</hpcc_url>
+                            <hpcc_username>${env.HPCC_USERNAME}</hpcc_username>
+                        </systemPropertyVariables>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </build>
+    </profile>
+    <!--
+        The deploy profiles below must be triggered via the "deploymode" property, as in
+            -Ddeploymode=R (to allow release deployments)
+            -Ddeploymode=S (to allow snapshot deployment)
+        Do not trigger them manually from IntelliJ or with the -P argument! These profiles
+        ensure the build isn't violating version rules for the project or its dependencies,
+        and defines the correct artifactory for each situation.
+    -->
+    <profile>
+        <id>deploy-null</id>
+        <activation><property><name>!deploymode</name></property></activation>
+        <distributionManagement>
+            <!-- This effectively disables deploys -->
+            <repository><id>jfrog-maven</id></repository>
+            <snapshotRepository><id>jfrog-maven</id></snapshotRepository>
+        </distributionManagement>
+    </profile>
+    <profile>
+        <id>deploy-snapshot</id>
+        <activation><property><name>deploymode</name><value>S</value></property></activation>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>${enforcer.version}</version>
+                    <executions>
+                        <execution>
+                            <id>enforce-snapshot</id>
+                            <goals><goal>enforce</goal></goals>
+                            <configuration>
+                                <rules>
+                                    <requireSnapshotVersion>
+                                        <message>[ERROR] Project version must end in -SNAPSHOT during snapshot deployment!</message>
+                                    </requireSnapshotVersion>
+                                    <requireProperty>
+                                        <property>deploymode</property>
+                                        <message>[ERROR] Deploy profiles must only be triggered via -Ddeploymode=R or -Ddeploymode=S</message>
+                                        <regex>^[sS]$</regex>
+                                        <regexMessage>[ERROR] Deploy profiles must only be triggered via -Ddeploymode=R or -Ddeploymode=S</regexMessage>
+                                    </requireProperty>
+                                </rules>
+                                <fail>true</fail>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </build>
+    </profile>
+    <profile>
+        <id>deploy-release</id>
+        <activation><property><name>deploymode</name><value>R</value></property></activation>
+        <repositories>
+            <repository>
+                <id>jfrog-maven</id>
+                <url>${resolve.release}</url>
+                <snapshots><enabled>false</enabled></snapshots>
+            </repository>
+        </repositories>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>${enforcer.version}</version>
+                    <executions>
+                        <execution>
+                            <id>enforce-release</id>
+                            <goals><goal>enforce</goal></goals>
+                            <configuration>
+                                <rules>
+                                    <requireReleaseVersion>
+                                        <message>[ERROR] Project version may not be a SNAPSHOT during "release" deployment!</message>
+                                    </requireReleaseVersion>
+                                    <requireReleaseDeps>
+                                        <message>[ERROR] No SNAPSHOT dependencies allowed during "release" deployment!</message>
+                                    </requireReleaseDeps>
+                                    <requireProperty>
+                                        <property>deploymode</property>
+                                        <message>[ERROR] Deploy profiles must only be triggered via -Ddeploymode=R or -Ddeploymode=S</message>
+                                        <regex>^[rR]$</regex>
+                                        <regexMessage>[ERROR] Deploy profiles must only be triggered via -Ddeploymode=R or -Ddeploymode=S</regexMessage>
+                                    </requireProperty>
+                                </rules>
+                                <fail>true</fail>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </build>
+    </profile>
+</profiles>
 </project>
