@@ -13,8 +13,8 @@
 
     <properties>
         <java.version>17</java.version>
-        <tardis.suffix>2.4.1</tardis.suffix>
-        <ch.suffix>1.8.0</ch.suffix>
+        <tardis.suffix>11.2.1</tardis.suffix>
+        <ch.suffix>2.9.4</ch.suffix>
     </properties>
 
     <dependencies>
