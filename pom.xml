@@ -15,7 +15,6 @@
         <java.version>17</java.version>
         <tardis.suffix>2.4.1</tardis.suffix>
         <ch.suffix>1.8.0</ch.suffix>
-        <spring.boot.version>3.2.2</spring.boot.version>
     </properties>
 
     <dependencies>
