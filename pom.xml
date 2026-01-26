@@ -5,7 +5,7 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/x
 
 <groupId>com.relx.rba.linking</groupId>
 <artifactId>logger</artifactId>
-<version>1.0.4-SNAPSHOT</version>
+<version>1.0.5-SNAPSHOT</version>
 <packaging>jar</packaging>
 
 <name>Linking-Logger-Service</name>
@@ -35,8 +35,8 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/x
         Similarly, if you reference a snapshot version of Tardis, the Merge-deploy.yml workflow can
         automatically rebuild when Tardis deploys a new snapshot in response to repository_dispatch.
     -->
-    <tardis.suffix>26.0-SNAPSHOT</tardis.suffix>
-    <ch.suffix>2.6-SNAPSHOT</ch.suffix>
+    <tardis.suffix>11.2.1</tardis.suffix>
+    <ch.suffix>2.9.4</ch.suffix>
     <!--
         All of RISK should be using JFrog now for package resolution and deployment, but the
         specific package repos will vary by project. Define them here.
